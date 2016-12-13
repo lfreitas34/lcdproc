@@ -27,6 +27,8 @@
  *                    2013 warhog <warhog@gmx.de> (Conditional ARM test)
  *                    2013 Serac <Raspberry Pi forum>
  *                               (Backlight & Rev2 board support)
+ *                   2015 Paul Webster <paul at dabdig.com>
+ *                              (Raspberry Pi 2 support)
  *
  * The code to access the GPIO on a Raspberry Pi draws on an example program
  * by Dom and Gert van Loo from:
@@ -70,6 +72,16 @@ void lcdrpi_HD44780_close(PrivateData *p);
  * This pointer is outside PrivataData as it needs to be volatile!
  */
 static volatile unsigned int *gpio_map = NULL;
+
+/**
+ * Calculated GPIO base address
+ * With the introduction of the Raspberry Pi 2 (RPi 2) in February 2015
+ * this location moved - so calculate at run-time rather than using static definition
+ * Simple method used for now - based on device found. However, there is a new routine available
+ * to get the value but it might rely on Device Tree being enabled on the RPi, so used simple method
+ * that could break with future RPi versions
+ */
+static volatile unsigned int gpio_base = 0;
 
 /*
  * Two different board revisions are currently in widespread use. The
@@ -119,7 +131,7 @@ setup_io(Driver *drvthis)
 					 PROT_READ | PROT_WRITE,
 					 MAP_SHARED,
 					 mem_fd,
-					 GPIO_BASE);
+					 gpio_base);
 
 	if (gpio_map == MAP_FAILED) {
 		report(RPT_ERR, "setup_io: mmap failed: %s", strerror(errno));
@@ -162,10 +174,24 @@ check_board_rev(Driver *drvthis)
 	/* On boards that have been overvolted, the MSB will be set */
 	rev &= 0x00ff;
 
-	if (strcmp(hw, "BCM2708") != 0 || rev == 0) {
-		report(RPT_ERR, "check_board_rev: This board is not recognized as a Raspberry Pi!");
+	if (((strcmp(hw, "BCM2708") != 0) && (strcmp(hw, "BCM2709") != 0)) || rev == 0) {
+		report(RPT_ERR, "check_board_rev: This board is not recognized as a Raspberry Pi! Found:%s",hw);
 		return NULL;
 	}
+
+       /* Now work out the GPIO base address */
+       /* Assume RPI1 - BCM2835/BCM2708 */
+       gpio_base = BCM2835_PERI_BASE;
+
+       if (strcmp(hw, "BCM2709") == 0) {
+               /* Looks like RPI2 */
+               gpio_base = BCM2836_PERI_BASE;
+       }
+
+       /* Now add in the offset */
+       gpio_base += GPIO_BASE_OFFSET;
+       report(RPT_INFO, "GPIO base: 0x%x",gpio_base);
+
 
 	/* Rev 1 boards will be 0x002 or 0x003 (not sure if 0x001 ever existed
 	 * in the wild). */

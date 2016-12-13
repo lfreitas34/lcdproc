@@ -21,8 +21,10 @@ struct rpi_gpio_map {
 
 /** Peripheral base address of the BCM2835 */
 #define BCM2835_PERI_BASE       0x20000000
-/** GPIO register start address */
-#define GPIO_BASE               BCM2835_PERI_BASE + 0x200000
+/** Peripheral base address of the BCM2836 / RPi 2 */
+#define BCM2836_PERI_BASE      0x3F000000
+/** GPIO register start address offset */
+#define GPIO_BASE_OFFSET        0x200000
 /** Length of register space */
 #define GPIO_BLOCK_SIZE         180
 /** The Pi has 32 GPIO pins */
